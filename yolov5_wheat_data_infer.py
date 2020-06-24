@@ -1,43 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[1]:
-
-
-# This Python 3 environment comes with many helpful analytics libraries installed
-# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
-# For example, here's several helpful packages to load
-
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-
-# Input data files are available in the read-only "../input/" directory
-# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
-
 import os
-
-
-# You can write up to 5GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
-# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
-
-
-# In[2]:
-
-
 import torch
 import sys
 from ensemble_boxes import *
 import glob
-# In[3]:
-
-# In[4]:
-
 
 import argparse
 
 from utils.datasets import *
 from utils.utils import *
-
 
 def detect(save_img=False):
     weights, imgsz = opt.weights,opt.img_size
@@ -46,11 +20,8 @@ def detect(save_img=False):
     device = torch_utils.select_device(opt.device)
     half = False
     # Load model
-
     model = torch.load(weights, map_location=device)['model'].to(device).eval()
-
     dataset = LoadImages(source, img_size=1024)
-
     t0 = time.time()
     img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
     all_path=[]
@@ -63,7 +34,6 @@ def detect(save_img=False):
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
-
         # Inference
         t1 = torch_utils.time_synchronized()
         bboxes_2 = []
@@ -72,7 +42,6 @@ def detect(save_img=False):
             pred = model(img, augment=opt.augment)[0]
             pred = non_max_suppression(pred, 0.4, opt.iou_thres,fast=True, classes=None, agnostic=False)
             t2 = torch_utils.time_synchronized()
-
             bboxes = []
             score = []
             # Process detections
@@ -99,26 +68,6 @@ def detect(save_img=False):
     return all_path,all_score,all_bboxex
 
 
-if __name__ == '__main__':
-    class opt:
-        weights = "/mei/yolov5/input/yolov5-master/weights/best.pt"
-        img_size = 1024
-        conf_thres = 0.1
-        iou_thres = 0.94
-        augment = True
-        device = '0'
-        classes=None
-        agnostic_nms = True
-    opt.img_size = check_img_size(opt.img_size)
-    print(opt)
-
-    with torch.no_grad():
-        res = detect()
-
-
-# In[5]:
-
-
 def run_wbf(boxes,scores, image_size=1024, iou_thr=0.33, skip_box_thr=0.34, weights=None):
     print('type(boxes)',type(boxes))
     boxes_new = []
@@ -140,22 +89,31 @@ def run_wbf(boxes,scores, image_size=1024, iou_thr=0.33, skip_box_thr=0.34, weig
     boxes = box_every_after
     return boxes, scores, labels
 
-
-# In[6]:
-
-
-all_path,all_score,all_bboxex = res
-
-
-# In[7]:
-
-
-results =[]
 def format_prediction_string(boxes, scores):
     pred_strings = []
     for j in zip(scores, boxes):
         pred_strings.append("{0:.4f} {1} {2} {3} {4}".format(j[0], j[1][0], j[1][1], j[1][2], j[1][3]))
     return " ".join(pred_strings)
+	
+if __name__ == '__main__':
+    class opt:
+        weights = "/mei/yolov5/input/yolov5-master/weights/best.pt"
+        img_size = 1024
+        conf_thres = 0.1
+        iou_thres = 0.94
+        augment = True
+        device = '0'
+        classes=None
+        agnostic_nms = True
+    opt.img_size = check_img_size(opt.img_size)
+    print(opt)
+
+    with torch.no_grad():
+        res = detect()
+
+all_path,all_score,all_bboxex = res
+
+results =[]
 
 
 size = 300
@@ -168,29 +126,20 @@ fontScale = 1
 # scores = all_score[idx]
 # Blue color in BGR
 color = (255, 0, 0)
-
 # Line thickness of 2 px
 thickness = 2
-
 for row in range(len(all_path)):
     image_id = all_path[row].split("/")[-1].split(".")[0]
     boxes = all_bboxex[row]
     scores = all_score[row]
 
-    #print('before run_wbf boxes',boxes)
-    #print('before run_wbf scores',scores)
-
     boxes, scores, labels = run_wbf(boxes,scores)
     boxes = np.array(boxes)
-    #print('boxes',boxes)
-    #print('scores',scores)
-    #print('labels',labels)
+
     boxes = (boxes*1024/1024).astype(np.int32).clip(min=0, max=1023)
     boxes[:, 2] = boxes[:, 2] - boxes[:, 0]
     boxes[:, 3] = boxes[:, 3] - boxes[:, 1]
     result = {'image_id': image_id,'PredictionString': format_prediction_string(boxes, scores)}
-
-    #print('result',result)
 
     results.append(result)
     print('imagepath',all_path[row])
@@ -199,26 +148,15 @@ for row in range(len(all_path)):
         image = cv2.rectangle(image, (b[0],b[1]), (b[0]+b[2],b[1]+b[3]), (255,0,0), 1)
         image = cv2.putText(image, '{:.2}'.format(s), (b[0]+np.random.randint(20),b[1]), font,
                        fontScale, color, thickness, cv2.LINE_AA)
-
     write_name = '/mei/yolov5/input/yolov5-master/write_image/' +'pred_' + image_id+'.png'
     cv2.imwrite(write_name,image)
 
-#print('results',results)
 test_df = pd.DataFrame(results, columns=['image_id', 'PredictionString'])
-
-# In[8]:
-
-# In[9]:
-
 
 test_df.to_csv('submission.csv', index=False)
 test_df.head()
 
-exit()
-
-#'''
-# In[10]:
-
+#exit()
 
 size = 300
 idx =-1
@@ -233,10 +171,7 @@ color = (255, 0, 0)
 
 # Line thickness of 2 px 
 thickness = 2
-
 index = 0
-
-print('len(boxes)',len(boxes))
 
 for b,s in zip(boxes,scores):
     image = cv2.rectangle(image, (b[0],b[1]), (b[0]+b[2],b[1]+b[3]), (255,0,0), 1) 
@@ -246,14 +181,4 @@ for b,s in zip(boxes,scores):
     write_name = '/mei/yolov5/input/yolov5-master/write_image/' + str(index)+'.png'
     cv2.imwrite(write_name,image)
     index +=1
-'''
-plt.figure(figsize=[20,20])
-plt.imshow(image[:,:,::-1])
-plt.show()
-'''
-
-# In[ ]:
-#'''
-
-
 
