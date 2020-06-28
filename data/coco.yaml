@@ -1,0 +1,25 @@
+# COCO 2017 dataset Common Objects in Context
+# Download command: bash yolov5/data/get_coco2017.sh
+# Train command: python train.py --data ./data/coco.yaml
+# Dataset should be placed next to yolov5 folder:
+#   /parent_folder
+#     /coco
+#     /yolov5
+
+
+# train and val datasets (image directory or *.txt file with image paths)
+train: /mei/yolov5/input/global-wheat-detection/train_img_new.txt  # 118k images
+val: /mei/yolov5/input/global-wheat-detection/val_img_new.txt  # 5k images
+test: /mei/yolov5/input/global-wheat-detection/val_img_new.txt  # 20k images for submission to CodaLab - Competition
+
+# number of classes
+nc: 1
+
+# class names
+names: ['wheat']
+
+# Print classes
+# with open('data/coco.yaml') as f:
+#   d = yaml.load(f, Loader=yaml.FullLoader)  # dict
+#   for i, x in enumerate(d['names']):
+#     print(i, x)
